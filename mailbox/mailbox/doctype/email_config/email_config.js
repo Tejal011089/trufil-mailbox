@@ -1,10 +1,3 @@
-/*$.extend(cur_frm.cscript, {
-	onload: function(doc,cdt,cdn) {
-		if (user && parseInt(doc.__islocal)!=0 && !doc.user){
-			doc.user = user
-		}
-	}
-});*/
 frappe.ui.form.on("Email Config", {
 	email_id: function(frm) {
 		if(!frm.doc.email_account_name) {
