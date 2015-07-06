@@ -1,0 +1,18 @@
+[
+ {
+  "description": null, 
+  "docstatus": 0, 
+  "doctype": "Tag", 
+  "modified": "2015-07-06 14:43:50.813606", 
+  "name": "Customer", 
+  "tag": "Customer"
+ }, 
+ {
+  "description": null, 
+  "docstatus": 0, 
+  "doctype": "Tag", 
+  "modified": "2015-07-06 14:44:02.199408", 
+  "name": "Supplier", 
+  "tag": "Supplier"
+ }
+]
