@@ -36,9 +36,14 @@ class EmailConfig(Document):
 			validate_email_add(self.email_id, True)
 			self.validate_duplicate_emailid_config()
 
+		if self.default_account:
+			self.validate_default_account()
+
 		if self.enabled:
 			self.get_pop3()
 			self.check_smtp()
+
+
 
 	def validate_duplicate_emailid_config(self):
 		#check email config exists for same user if yes throw exception
@@ -47,6 +52,17 @@ class EmailConfig(Document):
 
 		if email_config and not email_config == self.name and cint(self.get("__islocal")):
 			frappe.throw(_("Configuration for {0} Already Exists.").format(self.email_id))
+
+	def validate_default_account(self):
+		def_acc_exists = frappe.db.sql("""select name from 
+			`tabEmail Config` 
+			where default_account=1 
+			and name!='%s' 
+			and user='%s'"""%(self.name,self.user))
+		
+		if def_acc_exists:
+			self.default_account = 0
+			frappe.throw(_("You Already have default account").format(self.email_id))
 
 
 	def check_smtp(self):
@@ -117,6 +133,7 @@ class EmailConfig(Document):
 			"sender": email.from_email,
 			"email_account": self.name,
 			"user":self.user,
+			"recipients": email.mail.get("To"),
 			"date_time":date
 		})
 

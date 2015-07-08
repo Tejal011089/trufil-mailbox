@@ -57,8 +57,8 @@
  "is_submittable": 0, 
  "issingle": 0, 
  "istable": 0, 
- "modified": "2015-07-06 13:12:04.856027", 
- "modified_by": "Administrator", 
+ "modified": "2015-07-08 11:53:00.498439", 
+ "modified_by": "anand.pawar@indictranstech.com", 
  "module": "Mailbox", 
  "name": "Tag", 
  "name_case": "", 
@@ -66,7 +66,7 @@
  "permissions": [
   {
    "amend": 0, 
-   "apply_user_permissions": 0, 
+   "apply_user_permissions": 1, 
    "cancel": 0, 
    "create": 1, 
    "delete": 1, 

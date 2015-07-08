@@ -1,4 +1,7 @@
 frappe.listview_settings["Inbox"] = {
+	onload: function(listview) {
+		listview.page.add_menu_item(__("Compose"), function() { listview.get_composer() });
+	},
 	add_fields: ["tag"],
 	get_indicator: function(doc) {
 		if(doc.tag) {
@@ -7,5 +10,8 @@ frappe.listview_settings["Inbox"] = {
 		else {
 			return [__("UnRead"),"red", "doc.tag,!=,''"]
 		}
+	},
+	get_composer:function(){
+		alert("hiii")
 	}
 }

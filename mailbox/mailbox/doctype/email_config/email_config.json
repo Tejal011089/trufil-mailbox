@@ -29,6 +29,14 @@
    "unique": 0
   }, 
   {
+   "fieldname": "default_account", 
+   "fieldtype": "Check", 
+   "in_list_view": 1, 
+   "label": "Default Account", 
+   "permlevel": 0, 
+   "precision": ""
+  }, 
+  {
    "allow_on_submit": 0, 
    "fieldname": "email_id", 
    "fieldtype": "Data", 
@@ -284,8 +292,8 @@
  "is_submittable": 0, 
  "issingle": 0, 
  "istable": 0, 
- "modified": "2015-07-06 15:05:19.430526", 
- "modified_by": "Administrator", 
+ "modified": "2015-07-08 11:33:51.156769", 
+ "modified_by": "anand.pawar@indictranstech.com", 
  "module": "Mailbox", 
  "name": "Email Config", 
  "name_case": "", 
@@ -293,7 +301,7 @@
  "permissions": [
   {
    "amend": 0, 
-   "apply_user_permissions": 0, 
+   "apply_user_permissions": 1, 
    "cancel": 0, 
    "create": 1, 
    "delete": 1, 
