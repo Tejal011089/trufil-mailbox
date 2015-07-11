@@ -11,7 +11,8 @@ from frappe.email.receive import POP3Server, Email
 from poplib import error_proto
 from frappe import _
 import datetime
-
+from frappe.celery_app import get_celery, celery_task, task_logger, LONGJOBS_PREFIX
+from frappe.utils import get_sites
 
 class EmailConfig(Document):
 	def autoname(self):
@@ -123,7 +124,7 @@ class EmailConfig(Document):
 
 	def insert_communication(self, raw):
 		email = Email(raw)
-		date = datetime.datetime.strptime(email.date,'%Y-%m-%d %H:%M:%S').strftime('%d-%m-%Y %H:%M:%S')
+		date = datetime.datetime.strptime(email.date,'%Y-%m-%d %H:%M:%S')
 		
 		communication = frappe.get_doc({
 			"doctype": "Inbox",
@@ -145,8 +146,21 @@ class EmailConfig(Document):
 		email.save_attachments_in_doc(communication)
 
 		
-
-
 	def on_update(self):
 		self.receive()
+		pass
+
+
+def pull():
+	"""Will be called via scheduler, pull emails from all enabled POP3 email accounts."""
+	try:
+		frappe.init(site=frappe.local.site)
+		frappe.connect(site=frappe.local.site)
+		for email_account in frappe.db.sql_list("""select  name from `tabEmail Config` where enabled=1"""):
+			print email_account
+			email_account = frappe.get_doc("Email Config", email_account)
+			email_account.receive()	
+		frappe.db.commit()	
+	finally:
+		frappe.destroy()
 

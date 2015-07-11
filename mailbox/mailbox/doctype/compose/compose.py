@@ -6,63 +6,24 @@ from __future__ import unicode_literals
 import frappe
 from frappe.model.document import Document
 from mailbox.mailbox.doctype.inbox.inbox import get_recipients,prepare_attachments
-from frappe.desk.form.load import get_attachments
+from email.utils import formataddr, parseaddr
 import os, base64, re
 import hashlib
 import mimetypes
-from frappe.utils import get_site_path, get_hook_method, get_files_path, random_string, encode, cstr
+from frappe.utils import get_site_path, get_hook_method, get_files_path, random_string, encode, cstr,validate_email_add
 from frappe import _
 from frappe import conf
 from copy import copy
-
+import mailbox
 
 class Compose(Document):
-	def on_update(self):
-		sender = ''
-		if not sender and frappe.session.user != "Administrator":
-			sender = get_formatted_email(frappe.session.user)
-
-	
-		comm = frappe.get_doc({
-			"doctype":"Outbox",
-			"subject": self.subject,
-			"content": self.content,
-			"sender": sender,
-			"recipients": self.recipients,
-		})
-		comm.insert(ignore_permissions=True)
-
-		attachments = get_attachments(self.doctype,self.name)
-		for attachment in attachments:
-			file_data = {}
-			file_data.update({
-				"doctype": "File Data",
-				"attached_to_doctype":"Outbox",
-				"attached_to_name":comm.name,
-				"file_url":attachment["file_url"],
-				"file_name":attachment["file_name"]
-				
-			})
-			f = frappe.get_doc(file_data)
-			f.flags.ignore_permissions = True
-			f.insert();
-
-		recipients = get_recipients(self.recipients)
-		attachments = prepare_attachments(attachments)
-		
-		frappe.sendmail(
-			recipients = recipients,
-			sender = sender,
-			subject = self.subject,
-			content = self.content,
-			attachments = attachments,
-			bulk = True
-		)
+	pass
 
 def upload():
 	# get record details
 	file_url = frappe.form_dict.file_url
 	filename = frappe.form_dict.filename
+	ref_no = frappe.form_dict.ref_no
 
 	if not filename and not file_url:
 		frappe.msgprint(_("Please select a file or url"),
@@ -70,9 +31,9 @@ def upload():
 
 	# save
 	if filename:
-		filedata = save_uploaded()
+		filedata = save_uploaded(ref_no)
 	elif file_url:
-		filedata = save_url(file_url)
+		filedata = save_url(file_url_no)
 
 	return {
 		"name": filedata.name,
@@ -80,21 +41,22 @@ def upload():
 		"file_url": filedata.file_url,
 	}
 
-def save_uploaded():
+def save_uploaded(ref_no):
 	fname, content = get_uploaded_content()
 	if content:
-		return save_file(fname, content);
+		return save_file(fname, content,ref_no);
 	else:
 		raise Exception
 
-def save_url(file_url):
+def save_url(file_url,ref_no):
 	# if not (file_url.startswith("http://") or file_url.startswith("https://")):
 	# 	frappe.msgprint("URL must start with 'http://' or 'https://'")
 	# 	return None, None
 
 	f = frappe.get_doc({
-		"doctype": "File Data",
+		"doctype": "Compose",
 		"file_url": file_url,
+		"ref_no":ref_no
 	})
 	f.flags.ignore_permissions = True
 	try:
@@ -116,7 +78,7 @@ def get_uploaded_content():
 		return None, None
 
 
-def save_file(fname, content,decode=False):
+def save_file(fname, content,ref_no,decode=False):
 	if decode:
 		if isinstance(content, unicode):
 			content = content.encode("utf-8")
@@ -136,9 +98,9 @@ def save_file(fname, content,decode=False):
 		file_data = copy(file_data)
 
 	file_data.update({
-		"doctype": "File Data",
+		"doctype": "Compose",
 		"file_size": file_size,
-		"content_hash": content_hash,
+		"ref_no":ref_no
 	})
 
 	f = frappe.get_doc(file_data)
@@ -242,7 +204,7 @@ def delete_file_from_filesystem(doc):
 		os.remove(path)
 
 def get_file(fname):
-	f = frappe.db.sql("""select file_name from `tabFile Data`
+	f = frappe.db.sql("""select file_name from `tabCompose`
 		where name=%s or file_name=%s""", (fname, fname))
 	if f:
 		file_name = f[0][0]
@@ -277,3 +239,109 @@ def get_file_name(fname, optional_suffix):
 		return '{partial}{suffix}{extn}'.format(partial=partial, extn=extn, suffix=optional_suffix)
 	return fname
 
+@frappe.whitelist()
+def get_attachments(ref_no):
+	return frappe.get_all("Compose", fields=["file_name"],
+		filters = {"ref_no": ref_no})
+
+@frappe.whitelist()
+def make(doctype=None, name=None, content=None, subject=None, sent_or_received = "Sent",
+	sender=None, recipients=None, communication_medium="Email", send_email=False,
+	print_html=None, print_format=None, attachments='[]', ignore_doctype_permissions=False,
+	send_me_a_copy=False,ref_no=None):
+
+
+	if not sender and frappe.session.user != "Administrator":
+		sender = frappe.db.get_value("Email Config",{"default_account":1,"user":frappe.session.user},"email_id")
+
+	if not validated_email_addrs(recipients):
+		return {"not_valid":1}
+
+	comm = frappe.get_doc({
+		"doctype":"Outbox",
+		"subject": subject,
+		"content": content,
+		"sender": sender,
+		"recipients": recipients,
+	})
+	comm.insert(ignore_permissions=True)
+
+	attachments = get_attachments(ref_no)
+	for attachment in attachments:
+		file_data = {}
+		furl = "/files/%s"%attachment["file_name"]
+		file_data.update({
+			"doctype": "File Data",
+			"attached_to_doctype":"Outbox",
+			"attached_to_name":comm.name,
+			"file_url":furl,
+			"file_name":attachment["file_name"]
+			
+		})
+		f = frappe.get_doc(file_data)
+		f.flags.ignore_permissions = True
+		f.insert();
+
+	recipients = get_recipients(recipients)
+
+	attachments = [attachment["file_name"] for attachment in attachments]
+	attachments = prepare_attachments(attachments)
+	
+	mailbox.sendmail(
+		recipients=recipients,
+		sender=sender,
+		subject=subject,
+		content=content,
+		attachments=attachments
+	)
+
+	return {
+		"name": comm.name,
+		"recipients": ", ".join(recipients) if recipients else None
+	}
+
+def validated_email_addrs(recipients):
+	recipients = get_recipients(recipients)
+	for recipient in recipients:
+		if not validate_email_add(recipient):
+			return False
+	return True
+
+def get_recipients(recipients):
+	original_recipients = [s.strip() for s in cstr(recipients).split(",")]
+	recipients = original_recipients[:]
+	filtered = []
+	for e in list(set(recipients)):
+		email_id = parseaddr(e)[1]
+		if e not in filtered and email_id not in filtered:
+				filtered.append(e)
+	return filtered
+	
+def prepare_attachments(g_attachments=None):
+	attachments = []
+	if g_attachments:
+		if isinstance(g_attachments, basestring):
+			import json
+			g_attachments = json.loads(g_attachments)
+
+		for a in g_attachments:
+			if isinstance(a, basestring):
+				# is it a filename?
+				try:
+					file = get_file(a)
+					attachments.append({"fname": file[0], "fcontent": file[1]})
+				except IOError:
+					frappe.throw(_("Unable to find attachment {0}").format(a))
+			else:
+				attachments.append(a)
+
+	return attachments
+
+@frappe.whitelist()
+def validate():
+	if not frappe.db.get_value("Email Config",
+		{"user":frappe.session.user,
+		"default_account":1},"name"):
+		return {"default":False}
+	else:
+		return {"default":True}

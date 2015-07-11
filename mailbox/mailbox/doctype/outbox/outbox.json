@@ -93,6 +93,32 @@
    "unique": 0
   }, 
   {
+   "fieldname": "tag", 
+   "fieldtype": "Link", 
+   "label": "Tag", 
+   "options": "Tag", 
+   "permlevel": 0, 
+   "precision": ""
+  }, 
+  {
+   "depends_on": "eval:doc.tag == \"Supplier\"", 
+   "fieldname": "supplier", 
+   "fieldtype": "Link", 
+   "label": "Supplier", 
+   "options": "Supplier", 
+   "permlevel": 0, 
+   "precision": ""
+  }, 
+  {
+   "depends_on": "eval:doc.tag == \"Customer\"", 
+   "fieldname": "customer", 
+   "fieldtype": "Link", 
+   "label": "Customer", 
+   "options": "Customer", 
+   "permlevel": 0, 
+   "precision": ""
+  }, 
+  {
    "allow_on_submit": 0, 
    "fieldname": "section_break_8", 
    "fieldtype": "Section Break", 
@@ -304,8 +330,8 @@
  "is_submittable": 0, 
  "issingle": 0, 
  "istable": 0, 
- "modified": "2015-07-07 20:01:16.516123", 
- "modified_by": "Administrator", 
+ "modified": "2015-07-10 19:34:33.898454", 
+ "modified_by": "anand.pawar@indictranstech.com", 
  "module": "Mailbox", 
  "name": "Outbox", 
  "name_case": "", 

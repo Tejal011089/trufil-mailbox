@@ -7,6 +7,7 @@ frappe.ui.form.Attachment = Class.extend({
 	init: function(opts) {
 		$.extend(this, opts);
 		this.make();
+		this.dialog_attachments=[]
 	},
 	make: function() {
 		var me = this;
@@ -16,31 +17,15 @@ frappe.ui.form.Attachment = Class.extend({
 		this.add_attachment_wrapper = this.parent.find(".add_attachment").parent();
 		this.attachments_label = this.parent.find(".attachments-label");
 	},
-	max_reached: function() {
-		// no of attachments
-		var n = keys(this.get_attachments()).length;
-
-		// button if the number of attachments is less than max
-		if(n < this.frm.meta.max_attachments || !this.frm.meta.max_attachments) {
-			return false;
-		}
-		return true;
-	},
 	refresh: function() {
 		var me = this;
 
-		if(this.frm.doc.__islocal) {
-			this.parent.toggle(false);
-			return;
-		}
 		this.parent.toggle(true);
 		this.parent.find(".attachment-row").remove();
 
-		var max_reached = this.max_reached();
-		this.add_attachment_wrapper.toggleClass("hide", !max_reached);
-
 		// add attachment objects
 		var attachments = this.get_attachments();
+		console.log(attachments)
 		if(attachments.length) {
 			attachments.forEach(function(attachment) {
 				me.add_attachment(attachment)
@@ -51,7 +36,8 @@ frappe.ui.form.Attachment = Class.extend({
 
 	},
 	get_attachments: function() {
-		return this.frm.get_docinfo().attachments;
+		return this.dialog_attachments	
+
 	},
 	add_attachment: function(attachment) {
 		var file_name = attachment.file_name;
@@ -164,32 +150,32 @@ frappe.ui.form.Attachment = Class.extend({
 				me.dialog.hide();
 			},
 			btn: this.dialog.set_primary_action(__("Attach")),
-			max_width: this.frm.cscript ? this.frm.cscript.attachment_max_width : null,
-			max_height: this.frm.cscript ? this.frm.cscript.attachment_max_height : null,
+			
 		});
 	},
 	get_args: function() {
 		return {
 			method:"mailbox.mailbox.doctype.compose.compose.upload",
+			ref_no:this.ref_no
 		}
 	},
 	attachment_uploaded:  function(attachment, r) {
 		this.dialog && this.dialog.hide();
 		this.update_attachment(attachment, r.message.comment);
-
-		if(this.fieldname) {
-			this.frm.set_value(this.fieldname, attachment.file_url);
-		}
 	},
 	update_attachment: function(attachment, comment) {
-		if(attachment.name) {
-			this.add_to_attachments(attachment);
-			this.refresh();
-			if(comment) {
-				this.frm.get_docinfo().comments.push(comment);
-				this.frm.comments.refresh();
+		var me = this; 
+		frappe.call({
+			method: 'mailbox.mailbox.doctype.compose.compose.get_attachments',
+			args: {
+				ref_no:this.ref_no
+			},
+			callback: function(r,rt) {
+				me.dialog_attachments.push(r.message[0])
+				me.refresh();
 			}
-		}
+		})
+		
 	},
 	add_to_attachments: function (attachment) {
 		var form_attachments = this.get_attachments();

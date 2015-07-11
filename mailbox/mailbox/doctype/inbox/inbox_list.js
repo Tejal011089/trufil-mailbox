@@ -2,9 +2,29 @@
 {% include 'mailbox/mailbox/doctype/compose/attachments.js' %};
 frappe.listview_settings["Inbox"] = {
 	onload: function(listview) {
-		listview.page.add_menu_item(__("Compose"), function() { 
-			new frappe.views.Composer({})
- 
+		listview.page.add_inner_button(__("Compose"), function() { 
+			new mailbox.Composer({})
+		});
+		listview.page.add_inner_button(__("sync"), function() { 
+			frappe.call({
+				method:"mailbox.mailbox.doctype.inbox.inbox.sync_for_current_user",
+				callback: function(r) {
+					msgprint(__("Email Synced, Please Refresh page."))
+				}
+			});
+		});
+	},
+	refresh: function(listview) {
+		listview.page.add_inner_button(__("Compose"), function() { 
+			new mailbox.Composer({})
+		});
+		listview.page.add_inner_button(__("sync"), function() { 
+			frappe.call({
+				method:"mailbox.mailbox.doctype.inbox.inbox.sync_for_current_user",
+				callback: function(r) {
+					msgprint(__("Email Synced, Please Refresh page."))	
+				}
+			});
 		});
 	},
 	add_fields: ["tag"],
@@ -13,10 +33,7 @@ frappe.listview_settings["Inbox"] = {
 			return [__("Read"),"green", "doc.tag,!=,''"]
 		}
 		else {
-			return [__("UnRead"),"red", "doc.tag,!=,''"]
+			return [__("Yet to be Read"),"red", "doc.tag,!=,''"]
 		}
-	},
-	get_composer:function(){
-		alert("hiii")
 	}
 }

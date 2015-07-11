@@ -1,16 +1,19 @@
+{% include 'mailbox/mailbox/doctype/compose/compose.js' %};
+{% include 'mailbox/mailbox/doctype/compose/attachments.js' %};
 frappe.last_edited_communication = {};
 frappe.ui.form.on("Inbox", "refresh", function(frm) {
 	if (frm.doc.docstatus===0 && parseInt(frm.doc.__islocal)!=1){
 		frm.add_custom_button(__("Forward"), function() { frm.forward_mail() });
 		frm.add_custom_button(__("Reply"), function() { frm.reply_to_mail() });
 	}
+	frm.add_custom_button(__("Compose New"), function() { new mailbox.Composer({}) });
 	frm.reply_to_mail = function() {
-		action_p = 'reply'
-		make(action_p)	
+		this.action_p = 'reply'
+		make(this.action_p)	
 	};
 	frm.forward_mail = function(){
-		action_p = 'forward'
-		make(action_p)
+		this.action_p = 'forward'
+		make(this.action_p)
 	};
 	make = function(action_p){
 		var me = this;
@@ -40,27 +43,6 @@ frappe.ui.form.on("Inbox", "refresh", function(frm) {
 				me.send_action();
 			}
 		});
-
-		/*$(document).on("upload_complete", function(event, attachment) {
-			if(me.dialog.display) {
-				var wrapper = $(me.dialog.fields_dict.select_attachments.wrapper);
-
-				// find already checked items
-				var checked_items = wrapper.find('[data-file-name]:checked').map(function() {
-					return $(this).attr("data-file-name");
-				});
-
-				// reset attachment list
-				me.setup_attach();
-
-				// check latest added
-				checked_items.push(attachment.file_name);
-
-				$.each(checked_items, function(i, filename) {
-					wrapper.find('[data-file-name="'+ filename +'"]').prop("checked", true);
-				});
-			}
-		})*/
 		this.prepare(action_p);
 		this.dialog.show();
 
@@ -68,21 +50,21 @@ frappe.ui.form.on("Inbox", "refresh", function(frm) {
 	prepare = function(action_p) {
 		this.action_p = action_p
 		this.setup_subject_and_recipients();
-		console.log(frm.get_files())
 		this.setup_attach();
 		this.setup_email();
 		this.setup_autosuggest();
 		//this.setup_last_edited_communication();
-		//this.setup_standard_reply();
 		$(this.dialog.fields_dict.recipients.input).val(this.recipients || "").change();
 		$(this.dialog.fields_dict.subject.input).val(this.subject || "").change();
 		this.setup_earlier_reply();
 	};
 	setup_subject_and_recipients = function() {
         
-		this.subject = this.subject || "";
+		this.subject = "";
+		this.recipients = "";
 
 		if(this.action_p == 'reply') {
+			$(this.dialog.fields_dict.recipients.input).attr('disabled',true)
 			this.recipients = frm.doc.sender
 		}
 		
@@ -100,7 +82,7 @@ frappe.ui.form.on("Inbox", "refresh", function(frm) {
 			}
 			if(this.action_p == 'forward') {
 				this.subject = frm.doc.subject;
-				// prepend "Re:"
+				// prepend "Fwd:"
 				if(strip(this.subject.toLowerCase().split(":")[0])!="fwd") {
 					this.subject = "Fwd: " + this.subject;
 				}
@@ -139,20 +121,12 @@ frappe.ui.form.on("Inbox", "refresh", function(frm) {
 		// email
 		var me = this;
 		var fields = this.dialog.fields_dict;
-
-		/*if(this.attach_document_print) {
-			$(fields.attach_document_print.input).click();
-			$(fields.select_print_format.wrapper).toggle(true);
-		}*/
-
 		$(fields.send_email.input).prop("checked", true)
 
 		// toggle print format
 		$(fields.send_email.input).click(function() {
 			me.dialog.get_primary_btn().html($(this).prop("checked") ? "Send" : "Add Communication");
 		});
-
-		// select print format
 	};
 	send_action = function() {
 		var me = this,
@@ -169,7 +143,7 @@ frappe.ui.form.on("Inbox", "refresh", function(frm) {
 		me.send_email(btn, form_values, selected_attachments);
 		
 	};
-	send_email = function(btn, form_values, selected_attachments, print_html, print_format) {
+	send_email = function(btn, form_values, selected_attachments) {
 		var me = this;
 
 		return frappe.call({
@@ -181,15 +155,18 @@ frappe.ui.form.on("Inbox", "refresh", function(frm) {
 				doctype: frm.doc.doctype,
 				name: frm.doc.name,
 				send_email: form_values.send_email,
-				attachments: selected_attachments
+				attachments: selected_attachments,
+				email_account:frm.doc.email_account,
+				doc:frm.doc,
+				forward_or_reply:me.action_p
 			},
 			btn: btn,
 			callback: function(r) {
-				console.log(r)
 				if(!r.exc) {
 					if(form_values.send_email && r.message["recipients"])
 						msgprint(__("Email sent to {0}", [r.message["recipients"]]));
 					me.dialog.hide();
+					refresh_field("tag")
 				} else {
 					msgprint(__("There were errors while sending email. Please try again."));
 				}
@@ -336,3 +313,23 @@ frappe.ui.form.on("Inbox", "refresh", function(frm) {
 		return frappe.last_edited_communication[frm.doctype][key];
 	};
 });
+frappe.ui.form.on("Inbox", "tag", function(frm) {
+	if(frm.doc.tag == 'Customer' || frm.doc.tag == 'Supplier') {
+		return frappe.call({
+			method: "mailbox.mailbox.doctype.inbox.inbox.get_tagging_details",
+			args: {
+				supplier_or_customer: frm.doc.tag,
+				sender:frm.doc.sender				
+			},
+			callback: function(r) {
+				if (r.message){
+					if (frm.doc.tag == 'Customer') frm.set_value('customer',r.message[0][0])
+					else if (frm.doc.tag == 'Supplier') frm.set_value('supplier',r.message[0][0])
+				}
+				else{
+					frappe.msgprint(__("Please Create {0}",[frm.doc.tag]))
+				}
+			}
+		});
+	}
+})

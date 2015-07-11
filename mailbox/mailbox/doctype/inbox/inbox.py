@@ -11,6 +11,7 @@ from frappe.utils.file_manager import get_file
 import frappe.email.smtp
 from frappe import _
 from frappe.desk.form.load import get_attachments
+import mailbox
 
 class Inbox(Document):
 	def on_update(self):
@@ -23,7 +24,6 @@ class Inbox(Document):
 			Check these contact exsits for which customer or supplier get that supplier or customer 
 			and attach mail in his comment section
 		"""
-		frappe.errprint(self.tagged)
 		if self.tag == 'Customer' and self.customer and not cint(self.get("tagged")):
 			if not frappe.db.get_value('Contact',{"customer":self.customer,"email_id":self.sender},"name"):
 				self.create_contact(contact_for="Customer")
@@ -59,11 +59,18 @@ class Inbox(Document):
 		contact.insert(ignore_permissions=True)
 
 	def append_mail_to_doc(self,doctype,docname):
-	
+		related_content = """From: %(sender)s <br> To: %(recipients)s <br> Subject: %(subject)s <br> tag: %(tag)s"""%{
+				"sender":self.sender,
+				"recipients":self.recipients,
+				"subject":self.subject,
+				"tag":self.tag
+			}
+		
 		comm = frappe.get_doc({
 			"doctype":"Communication",
 			"subject": self.subject,
-			"content": self.content,
+			"content_full": self.content,
+			"content":related_content,
 			"sender": self.sender,
 			"communication_medium": "Email",
 			"sent_or_received": "Received",
@@ -94,31 +101,37 @@ class Inbox(Document):
 def make(doctype=None, name=None, content=None, subject=None, sent_or_received = "Sent",
 	sender=None, recipients=None, communication_medium="Email", send_email=False,
 	print_html=None, print_format=None, attachments='[]', ignore_doctype_permissions=False,
-	send_me_a_copy=False):
+	send_me_a_copy=False,email_account=None,doc=None,forward_or_reply=None):
 
 
 	if not sender and frappe.session.user != "Administrator":
-		sender = get_formatted_email(frappe.session.user)
-
+		sender = frappe.db.get_value("Email Config",{"name":email_account},"email_id")
+	import json	
+	doc = json.loads(doc)
 	
 	comm = frappe.get_doc({
 		"doctype":"Outbox",
 		"subject": subject,
 		"content": content,
+		"tag": doc.get('tag') or "",
+		"customer": doc.get("customer") or "",
+		"supplier": doc.get("supplier") or "",
 		"sender": sender,
 		"recipients": recipients,
 	})
 	comm.insert(ignore_permissions=True)
 
-	attachments = get_attachments(doctype,name)
+	#attachments = get_attachments(doctype,name)
+	attachments = prepare_attachments(attachments)
 	for attachment in attachments:
 		file_data = {}
+		furl = "/files/%s"%attachment["fname"] 
 		file_data.update({
 			"doctype": "File Data",
 			"attached_to_doctype":"Outbox",
 			"attached_to_name":comm.name,
-			"file_url":attachment["file_url"],
-			"file_name":attachment["file_name"]
+			"file_url":furl,
+			"file_name":attachment["fname"]
 			
 		})
 		f = frappe.get_doc(file_data)
@@ -127,14 +140,21 @@ def make(doctype=None, name=None, content=None, subject=None, sent_or_received =
 
 	recipients = get_recipients(recipients)
 	attachments = prepare_attachments(attachments)
-	frappe.sendmail(
+	
+	mailbox.sendmail(
 		recipients=recipients,
 		sender=sender,
 		subject=subject,
 		content=content,
 		attachments=attachments,
-		bulk=True
 	)
+
+	doc = frappe.get_doc("Inbox",name)
+	if forward_or_reply == 'reply':
+		doc.tag = 'Responded'
+	elif forward_or_reply == 'forward':
+		doc.tag = 'Forwarded'	
+	doc.save(ignore_permissions=True)
 
 	return {
 		"name": comm.name,
@@ -158,17 +178,30 @@ def prepare_attachments(g_attachments=None):
 			import json
 			g_attachments = json.loads(g_attachments)
 
-			for a in g_attachments:
-				if isinstance(a, basestring):
-					# is it a filename?
-					try:
-						file = get_file(a)
-						attachments.append({"fname": file[0], "fcontent": file[1]})
-					except IOError:
-						frappe.throw(_("Unable to find attachment {0}").format(a))
-				else:
-					attachments.append(a)
+		for a in g_attachments:
+			if isinstance(a, basestring):
+				# is it a filename?
+				try:
+					file = get_file(a)
+					furl = "/files/%s"%file[0] 
+					attachments.append({"fname": file[0], "fcontent": file[1]})
+				except IOError:
+					frappe.throw(_("Unable to find attachment {0}").format(a))
+			else:
+				attachments.append(a)
 	return attachments				
 
+@frappe.whitelist()
+def get_tagging_details(supplier_or_customer,sender):
+	supplier_or_customer = supplier_or_customer.lower()
+	
+	return frappe.db.sql("""select %s from `tabContact` 
+		where email_id='%s' 
+		and %s!='' limit 1"""%(supplier_or_customer,sender,supplier_or_customer))
 
 
+@frappe.whitelist()
+def sync_for_current_user():
+	for email_account in frappe.get_list("Email Config", filters={"enabled": 1,"user":frappe.session.user}):
+		email_config = frappe.get_doc('Email Config',email_account)
+		email_config.receive()		

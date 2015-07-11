@@ -77,23 +77,11 @@ app_version = "0.0.1"
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"mailbox.tasks.all"
-# 	],
-# 	"daily": [
-# 		"mailbox.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"mailbox.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"mailbox.tasks.weekly"
-# 	]
-# 	"monthly": [
-# 		"mailbox.tasks.monthly"
-# 	]
-# }
+scheduler_events = {
+	"all": [
+		"mailbox.mailbox.doctype.email_config.email_config.pull"
+	]
+}
 
 # Testing
 # -------
