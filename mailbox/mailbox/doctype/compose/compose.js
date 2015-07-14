@@ -35,8 +35,7 @@ mailbox.Composer = Class.extend({
 				{fieldtype: "Column Break"},
 				{label:__("Subject"), fieldtype:"Data", reqd: 1,
 					fieldname:"subject"},
-				{fieldtype: "Column Break"},
-				
+						
 				{fieldtype: "Section Break"},
 				{label:__("Message"), fieldtype:"Text Editor", reqd: 1,
 					fieldname:"content"},
@@ -44,7 +43,7 @@ mailbox.Composer = Class.extend({
 				{fieldtype: "Section Break"},
 				{fieldtype: "Column Break"},
 				{label:__("Send As Email"), fieldtype:"Check",
-					fieldname:"send_email"},
+					fieldname:"send_email","default":1},
 					
 				{fieldtype: "Column Break"},
 				{label:__("Select Attachments"), fieldtype:"HTML",
@@ -77,7 +76,7 @@ mailbox.Composer = Class.extend({
 	},
 	prepare: function() {
 		var me = this;
-		//this.setup_autosuggest();
+		this.setup_autosuggest();
 		$(this.dialog.fields_dict.recipients.input).val(this.recipients || "").change();
 		$(this.dialog.fields_dict.subject.input).val(this.subject || "").change();
 	},
@@ -116,5 +115,58 @@ mailbox.Composer = Class.extend({
 				}
 			}
 		});
+	},
+	setup_autosuggest : function() {
+		var me = this;
+
+		function split( val ) {
+			return val.split( /,\s*/ );
+		}
+		function extractLast( term ) {
+			return split(term).pop();
+		}
+
+		$(this.dialog.fields_dict.recipients.input)
+			.bind( "keydown", function(event) {
+				if (event.keyCode === $.ui.keyCode.TAB &&
+						$(this).data( "autocomplete" ) &&
+						$(this).data( "autocomplete" ).menu.active ) {
+					event.preventDefault();
+				}
+			})
+			.autocomplete({
+				source: function(request, response) {
+					return frappe.call({
+						method:'frappe.email.get_contact_list',
+						args: {
+							'select': "email_id",
+							'from': "Contact",
+							'where': "email_id",
+							'txt': extractLast(request.term).value || '%'
+						},
+						quiet: true,
+						callback: function(r) {
+							response($.ui.autocomplete.filter(
+								r.cl || [], extractLast(request.term)));
+						}
+					});
+				},
+				appendTo: this.dialog.$wrapper,
+				focus: function() {
+					// prevent value inserted on focus
+					return false;
+				},
+				select: function( event, ui ) {
+					var terms = split( this.value );
+					// remove the current input
+					terms.pop();
+					// add the selected item
+					terms.push( ui.item.value );
+					// add placeholder to get the comma-and-space at the end
+					terms.push( "" );
+					this.value = terms.join( ", " );
+					return false;
+				}
+			});
 	}
 });

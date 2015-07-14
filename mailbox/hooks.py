@@ -6,7 +6,7 @@ app_title = "Mailbox"
 app_publisher = "New Indictrans Technologies Pvt. Ltd."
 app_description = "Configure and get all mails from inbox.configured by pop3"
 app_icon = "octicon octicon-mail-read"
-app_color = "blue"
+app_color = "#5ac8fb"
 app_email = "conatct@indictranstech.com"
 app_version = "0.0.1"
 

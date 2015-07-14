@@ -5,7 +5,19 @@ frappe.ui.form.on("Inbox", "refresh", function(frm) {
 	if (frm.doc.docstatus===0 && parseInt(frm.doc.__islocal)!=1){
 		frm.add_custom_button(__("Forward"), function() { frm.forward_mail() });
 		frm.add_custom_button(__("Reply"), function() { frm.reply_to_mail() });
-	}
+	};
+	if (frm.doc.docstatus===0){
+		frappe.call({
+			method:"mailbox.mailbox.doctype.inbox.inbox.check_contact",
+			args:{"contact":frm.doc.sender},
+			callback: function(r) {
+				if (r.message){
+					msgprint(r.message)
+				}
+				
+			}
+		});
+	};	
 	frm.add_custom_button(__("Compose New"), function() { new mailbox.Composer({}) });
 	frm.reply_to_mail = function() {
 		this.action_p = 'reply'
@@ -313,7 +325,7 @@ frappe.ui.form.on("Inbox", "refresh", function(frm) {
 		return frappe.last_edited_communication[frm.doctype][key];
 	};
 });
-frappe.ui.form.on("Inbox", "tag", function(frm) {
+/*frappe.ui.form.on("Inbox", "tag", function(frm) {
 	if(frm.doc.tag == 'Customer' || frm.doc.tag == 'Supplier') {
 		return frappe.call({
 			method: "mailbox.mailbox.doctype.inbox.inbox.get_tagging_details",
@@ -331,5 +343,17 @@ frappe.ui.form.on("Inbox", "tag", function(frm) {
 				}
 			}
 		});
+	}
+})*/
+frappe.ui.form.on("Inbox", "customer", function(frm) {
+	if (frm.doc.supplier){
+		msgprint('You Can Either Select Customer or Supplier')
+		frm.set_value('customer','')
+	}
+})
+frappe.ui.form.on("Inbox", "supplier", function(frm) {
+	if (frm.doc.customer){
+		msgprint('You Can Either Select Customer or Supplier')
+		frm.set_value('supplier','')
 	}
 })

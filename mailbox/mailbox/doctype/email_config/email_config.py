@@ -144,6 +144,8 @@ class EmailConfig(Document):
 
 		# save attachments
 		email.save_attachments_in_doc(communication)
+		communication.check_contact_exists()
+		communication.save()
 
 		
 	def on_update(self):

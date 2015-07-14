@@ -24,14 +24,14 @@ class Inbox(Document):
 			Check these contact exsits for which customer or supplier get that supplier or customer 
 			and attach mail in his comment section
 		"""
-		if self.tag == 'Customer' and self.customer and not cint(self.get("tagged")):
+		if self.customer and not cint(self.get("tagged")):
 			if not frappe.db.get_value('Contact',{"customer":self.customer,"email_id":self.sender},"name"):
 				self.create_contact(contact_for="Customer")
 			
 			self.append_mail_to_doc("Customer",self.customer)
 			self.tagged = 1
 
-		elif self.tag == 'Supplier' and self.supplier and not cint(self.get("tagged")):
+		elif self.supplier and not cint(self.get("tagged")):
 			if not frappe.db.get_value('Contact',{"supplier":self.supplier,"email_id":self.sender},"name"):
 				self.create_contact(contact_for="supplier")
 
@@ -95,6 +95,22 @@ class Inbox(Document):
 			f.flags.ignore_permissions = True
 			f.insert();
 
+	def check_contact_exists(self):
+		contact_name = frappe.db.get_value("Contact",{"email_id":self.sender},"name")
+		if contact_name:
+			cobj = frappe.get_doc('Contact',contact_name)
+			
+			if cobj.customer:
+				self.append_mail_to_doc("Customer",cobj.customer)
+				self.customer = cobj.customer
+				self.tagged = 1
+
+			elif cobj.supplier:
+				self.append_mail_to_doc("Supplier",cobj.supplier)
+				self.supplier = cobj.supplier
+				self.tagged = 1
+
+
 
 			
 @frappe.whitelist()
@@ -153,12 +169,13 @@ def make(doctype=None, name=None, content=None, subject=None, sent_or_received =
 	if forward_or_reply == 'reply':
 		doc.tag = 'Responded'
 	elif forward_or_reply == 'forward':
-		doc.tag = 'Forwarded'	
+		doc.tag = 'Forwarded to Other User'	
 	doc.save(ignore_permissions=True)
 
 	return {
 		"name": comm.name,
 		"recipients": ", ".join(recipients) if recipients else None
+
 	}
 
 def get_recipients(recipients):
@@ -174,6 +191,7 @@ def get_recipients(recipients):
 def prepare_attachments(g_attachments=None):
 	attachments = []
 	if g_attachments:
+		
 		if isinstance(g_attachments, basestring):
 			import json
 			g_attachments = json.loads(g_attachments)
@@ -183,12 +201,12 @@ def prepare_attachments(g_attachments=None):
 				# is it a filename?
 				try:
 					file = get_file(a)
-					furl = "/files/%s"%file[0] 
 					attachments.append({"fname": file[0], "fcontent": file[1]})
 				except IOError:
 					frappe.throw(_("Unable to find attachment {0}").format(a))
 			else:
 				attachments.append(a)
+
 	return attachments				
 
 @frappe.whitelist()
@@ -204,4 +222,32 @@ def get_tagging_details(supplier_or_customer,sender):
 def sync_for_current_user():
 	for email_account in frappe.get_list("Email Config", filters={"enabled": 1,"user":frappe.session.user}):
 		email_config = frappe.get_doc('Email Config',email_account)
-		email_config.receive()		
+		email_config.receive()
+
+@frappe.whitelist()
+def check_contact(contact=None):
+	if contact:
+		if not frappe.db.get_value("Contact",{"email_id":contact},"name"):
+			return "Create a new Vendor/Customer"
+
+@frappe.whitelist()
+def check_tagging_status():
+	users = frappe.db.sql("""SELECT user,name FROM 
+		`tabInbox` 
+		WHERE creation > (NOW() - INTERVAL 5 DAY)
+		and tag!='' """,as_dict=1)
+
+	recipients = []
+	for user in users:
+		if user.get('user') != 'Administrator':
+			recipients.append(user.get('user'))
+
+	if recipients:
+		frappe.sendmail(recipients=recipients,
+					subject="Tagging Reminder",
+					message="""Its over five days Incoming Message Not tagged""")
+
+
+
+
+			
