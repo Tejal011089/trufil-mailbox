@@ -6,7 +6,7 @@ app_title = "Mailbox"
 app_publisher = "New Indictrans Technologies Pvt. Ltd."
 app_description = "Configure and get all mails from inbox.configured by pop3"
 app_icon = "octicon octicon-mail-read"
-app_color = "blue"
+app_color = "#5ac8fb"
 app_email = "conatct@indictranstech.com"
 app_version = "0.0.1"
 
@@ -77,23 +77,11 @@ app_version = "0.0.1"
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"mailbox.tasks.all"
-# 	],
-# 	"daily": [
-# 		"mailbox.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"mailbox.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"mailbox.tasks.weekly"
-# 	]
-# 	"monthly": [
-# 		"mailbox.tasks.monthly"
-# 	]
-# }
+scheduler_events = {
+	"all": [
+		"mailbox.mailbox.doctype.email_config.email_config.pull"
+	]
+}
 
 # Testing
 # -------
@@ -107,3 +95,4 @@ app_version = "0.0.1"
 # 	"frappe.desk.doctype.event.event.get_events": "mailbox.event.get_events"
 # }
 
+fixtures = ["Tag"]

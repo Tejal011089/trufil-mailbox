@@ -1,0 +1,42 @@
+[
+ {
+  "description": null, 
+  "docstatus": 0, 
+  "doctype": "Tag", 
+  "modified": "2015-07-13 15:04:22.807726", 
+  "name": "Enquiry", 
+  "tag": "Enquiry"
+ }, 
+ {
+  "description": null, 
+  "docstatus": 0, 
+  "doctype": "Tag", 
+  "modified": "2015-07-13 15:04:33.694284", 
+  "name": "Vendor Quote", 
+  "tag": "Vendor Quote"
+ }, 
+ {
+  "description": null, 
+  "docstatus": 0, 
+  "doctype": "Tag", 
+  "modified": "2015-07-13 15:04:52.988567", 
+  "name": "Customer Query", 
+  "tag": "Customer Query"
+ }, 
+ {
+  "description": null, 
+  "docstatus": 0, 
+  "doctype": "Tag", 
+  "modified": "2015-07-13 15:05:12.488825", 
+  "name": "Responded", 
+  "tag": "Responded"
+ }, 
+ {
+  "description": null, 
+  "docstatus": 0, 
+  "doctype": "Tag", 
+  "modified": "2015-07-13 15:05:34.177988", 
+  "name": "Forwarded to Other User", 
+  "tag": "Forwarded to Other User"
+ }
+]

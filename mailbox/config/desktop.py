@@ -5,7 +5,7 @@ from frappe import _
 def get_data():
 	return {
 		"Mailbox": {
-			"color": "blue",
+			"color": "#5ac8fb",
 			"icon": "octicon octicon-mail-read",
 			"type": "module",
 			"label": _("Mailbox")
