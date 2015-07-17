@@ -33,6 +33,11 @@ def get_data():
 					"name": "Tag",
 					"description": _("Tagging for Incoming mails")
 				},
+				{
+					"type": "doctype",
+					"name": "DMS",
+					"description": _("Configure Which Documents To Be shown on DMS")
+				},
 			]
 		}
 	]
