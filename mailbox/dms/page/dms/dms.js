@@ -12,10 +12,10 @@ frappe.pages['dms'].on_page_load = function(wrapper) {
 	wrapper.make_tree = function() {
 		var ctype = frappe.get_route()[1] || 'DMS';
 		return frappe.call({
-			method: 'erpnext.selling.page.sales_browser.sales_browser.get_children',
+			method: 'mailbox.dms.page.dms.dms.get_children',
 			args: {ctype: ctype},
 			callback: function(r) {
-				var root = r.message[0]["value"];
+				var root = 'DMS';
 				dms = new DMS(ctype, root, page,
 					page.main.css({
 						"min-height": "300px",
@@ -26,7 +26,7 @@ frappe.pages['dms'].on_page_load = function(wrapper) {
 	}
 	wrapper.make_tree();
 }
-frappe.pages['DMS'].on_page_show = function(wrapper){
+frappe.pages['dms'].on_page_show = function(wrapper){
 	// set route
 	var ctype = frappe.get_route()[1] || 'DMS';
 
@@ -58,44 +58,32 @@ DMS = Class.extend({
 			parent: $(parent),
 			label: __(root),
 			args: {ctype: ctype},
-			method: 'erpnext.selling.page.sales_browser.sales_browser.get_children',
+			method: 'mailbox.dms.page.dms.dms.get_children',
 			toolbar: [
 				{toggle_btn: true},
 				{
 					label:__("Add Doctype"),
 					condition: function(node) {
-						return !node.root && me.can_read;
+						return !node.root && node.data.type == 'module';
 					},
 					click: function(node) {
-						frappe.set_route("Form", me.ctype, node.label);
+						frappe.set_route("List","DMS");
 					}
 				},
 				{
 					label:__("Add Child"),
-					condition: function(node) { return me.can_create && node.expandable; },
+					condition: function(node) { return node.data.type == 'single' },
 					click: function(node) {
 						me.new_node();
 					}
 				},
 				{
 					label:__("Add New Document"),
-					condition: function(node) { return !node.root && me.can_write; },
+					condition: function(node) { return node.data.type == 'single' || node.data.type == 'doc'},
 					click: function(node) {
-						frappe.model.rename_doc(me.ctype, node.label, function(new_name) {
-							node.$a.html(new_name);
-						});
-					}
-				}/*,
-				{
-					label:__("Delete"),
-					condition: function(node) { return !node.root && me.can_delete; },
-					click: function(node) {
-						frappe.model.delete_doc(me.ctype, node.label, function() {
-							node.parent.remove();
-						});
+						
 					}
 				}
-*/
 			]
 		});
 	},

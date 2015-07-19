@@ -25,7 +25,6 @@ frappe.ui.form.Attachment = Class.extend({
 
 		// add attachment objects
 		var attachments = this.get_attachments();
-		console.log(attachments)
 		if(attachments.length) {
 			attachments.forEach(function(attachment) {
 				me.add_attachment(attachment)
