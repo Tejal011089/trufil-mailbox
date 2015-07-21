@@ -93,3 +93,30 @@ def add_node():
 		doc.employee = frappe.form_dict.get('employee')
 
 	doc.save()
+
+# Search Documnet-------------------------------------------------------------
+@frappe.whitelist()
+def get_attached_document_data(doc_name=None,file_name=None):
+	if not (doc_name) or not (file_name):
+		file_data_details=frappe.db.sql("""select file_name,file_url,attached_to_doctype,attached_to_name from `tabFile Data`""",as_dict=1)
+		
+	if doc_name:
+		file_data_details=frappe.db.sql("""select file_name,file_url,attached_to_doctype,attached_to_name from `tabFile Data` 
+						where attached_to_doctype='%s'"""%doc_name,as_dict=1)
+
+		msg="There is no any file is attached to the Doctype='"+doc_name+"'"
+		
+	elif file_name:
+		file_data_details=frappe.db.sql("""select file_name,file_url,attached_to_doctype,attached_to_name from `tabFile Data` 
+						where file_name like '%%%s%%' """%file_name,as_dict=1)
+		msg= "There is no any file whose name contains like '"+file_name+"' is attched to any doctype."
+
+	if file_data_details:
+		for i in file_data_details:
+			module=frappe.db.sql("""select module from `tabDocType` where name='%s'"""%i['attached_to_doctype'],as_list=1)
+			if module:
+				i['module']=module[0][0]
+		return file_data_details
+
+	else:
+		frappe.throw(msg)
