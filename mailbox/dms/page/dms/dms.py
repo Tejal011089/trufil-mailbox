@@ -119,4 +119,5 @@ def get_attached_document_data(doc_name=None,file_name=None):
 		return file_data_details
 
 	else:
-		frappe.throw(msg)
+		# frappe.throw(msg)
+		return None

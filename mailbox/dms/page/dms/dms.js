@@ -1,3 +1,4 @@
+
 frappe.pages['dms'].on_page_load = function(wrapper) {
 	var page = frappe.ui.make_app_page({
 		parent: wrapper,
@@ -49,9 +50,10 @@ DMS = Class.extend({
 					frappe.boot.user.in_create.indexOf(this.ctype) !== -1;
 		me.can_write = frappe.model.can_write(this.ctype);
 		me.can_delete = frappe.model.can_delete(this.ctype);
-
+        
 		me.page.set_primary_action(__("Search"), function() {
-			me.search_document();
+			frappe.require("assets/dms/search_document.js")
+			new Search_Document({})
 		});
 
 		this.tree = new frappe.ui.Tree({
@@ -143,178 +145,6 @@ DMS = Class.extend({
 
 		d.show();
 	},
-
-	//Search Document
-	search_document:function(){
-        this.make_structure()
-        this.init_for_change()
-        this.render_click_data()
-    },
-    make_structure: function(){
-		this.d = new frappe.ui.Dialog({
-		title:frappe._('Document Management System'),
-		fields: [
-
-			{fieldtype:'Select', fieldname:'filter_type',options:'\nDoctype\nFilename', label:frappe._('Filter Type'), reqd:true, 
-				description: frappe._("Select Filter (DocType or Filename) to start.")},
-
-			{fieldtype:'Link', fieldname:'doc_name',options:'DocType', label:frappe._('DocType Name'),reqd:false },
-
-			{fieldtype:'Data', fieldname:'file_name',label:frappe._('File Name'),reqd:false },
-
-			//{fieldtype:'Link', fieldname:'file_name_new',label:frappe._('File Name'),reqd:false },
-
-			{fieldtype:'Button', fieldname:'search',label:frappe._('Search'),reqd:false },
-
-			{fieldtype:'HTML', fieldname:'styles_name', label:__('Styles'), reqd:false,
-                        description: __("")},
-
-            {fieldtype:'HTML', fieldname:'scrolling_name', label:__('scrolling'), reqd:false,
-                        description: __("")},
-		]
-	})
-	this.fields=this.d.fields_dict
-	$('[data-fieldname=doc_name]').css('display','none')
-	$('[data-fieldname=file_name]').css('display','none')
-	$('[data-fieldname=search]').css('display','none')
-
-	this.div = $('<div id="myGrid">\
-		<table style="background-color: #f9f9f9;height:10px" id="mytable">\
-		<tbody></tbody></table></div>').appendTo($(this.fields.styles_name.wrapper))
-
-
-	$('<div id="listingTable">\
-						<input type="button" value="Prev" id="btn_prev">\
-						<input type="button" value="Next" id="btn_next">\
-						page: <span id="page"></span></div>').appendTo($('#myGrid'))
-
-
-     this.d.show();
-
-    },
-
-    init_for_change:function(){
-		var me=this
-		$(this.fields.filter_type.input).change(function(){
-		if ($(this).val()=='Doctype'){
-			$('[data-fieldname=doc_name]').css('display','block')
-			$('[data-fieldname=file_name]').css('display','none')
-			
-		}
-		else{
-			$('[data-fieldname=file_name]').css('display','block')
-			$('[data-fieldname=doc_name]').css('display','none')
-			
-		}
-		$('[data-fieldname=search]').css('display','block')
-
-		});
-	
-	},
-
-	render_click_data:function(){
-	var me=this
-
-	$(this.fields.search.input).click(function() {
-		$("#mytable tr").remove();
-
-		if($(me.fields.filter_type.input).val()=='Doctype'){
-			doc_name=$(me.fields.doc_name.input).val()
-			file_name=null
-		}
-		else if($(me.fields.filter_type.input).val()=='Filename'){
-			doc_name=null
-			file_name=$(me.fields.file_name.input).val()
-		}
-
-		frappe.call({
-
-			method: "mailbox.dms.page.dms.dms.get_attached_document_data",
-			args: {
-				"doc_name": doc_name,
-				"file_name":file_name,
-			},
-				callback: function(r) {
-					me.values=r.message
-					me.cal_for_btn_prev()
-				}
-
-			});
-
-	});
-
-
-},
-
-cal_for_btn_prev:function(){
-	var me= this
-	var current_page = 1;
-	var records_per_page = 2;
-	numPages=Math.ceil(me.values.length/records_per_page)
-	console.log(numPages)
-
-	$('<div id="listingTable">\
-						<input type="button" value="Prev" id="btn_prev">\
-						<input type="button" value="Next" id="btn_next">\
-						page: <span id="page"></span></div>').appendTo($('#myGrid'))
-					
-
-    changePage(1,numPages,me.values,records_per_page);
-  	
-
-	$('#btn_prev').click(function(){
-		if (current_page > 1) {
-        	current_page--;
-       		changePage(current_page,numPages,me.values,records_per_page);
-    }
-
-    })
-
-    $('#btn_next').click(function(){
-    	if (current_page < numPages) {
-       	 	current_page++;
-        	changePage(current_page,numPages,me.values,records_per_page);
-    }
-
-    })
-},
-
-
+    
 });
-
-function changePage(page,numPages,values,records_per_page)
-{
-    var btn_next = document.getElementById("btn_next");
-    var btn_prev = document.getElementById("btn_prev");
-    var listing_table = document.getElementById("listingTable");
-    var page_span = document.getElementById("page");
- 
-    // Validate page
-    if (page < 1) page = 1;
-    if (page > numPages) page = numPages;
-
-    listing_table.innerHTML = "";
-
-    for (var i = (page-1) * records_per_page; i < (page * records_per_page); i++) {
-        listing_table.innerHTML += '<tr  id="row"><td id="img" style="background-color:#FFF">'+values[i].module+ '>' +values[i].attached_to_doctype+ '>' +values[i].attached_to_name+ '>' +'<b><a class="fold" id="demo" data-flag=true target="_blank" href="../files/'+values[i].file_name+'">'+values[i].file_name+' </a></b></td></tr>' + "<br>";
-    }
-    page_span.innerHTML = page;
-    console.log(page_span.innerHTML)
-
-    if (page == 1) {
-        btn_prev.style.visibility = "hidden";
-    } else {
-        btn_prev.style.visibility = "visible";
-    }
-
-    if (page == numPages){
-        btn_next.style.visibility = "hidden";
-    } else {
-        btn_next.style.visibility = "visible";
-    }
-}
-
-
-
-
 
