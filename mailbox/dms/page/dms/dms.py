@@ -96,19 +96,20 @@ def add_node():
 
 # Search Documnet-------------------------------------------------------------
 @frappe.whitelist()
-def get_attached_document_data(doc_name=None,file_name=None):
+def get_attached_document_data(doc_name=None,file_name=None,user=None):
 	if not (doc_name) or not (file_name):
-		file_data_details=frappe.db.sql("""select file_name,file_url,attached_to_doctype,attached_to_name from `tabFile Data`""",as_dict=1)
+		file_data_details=frappe.db.sql("""select file_name,file_url,attached_to_doctype,attached_to_name from `tabFile Data`
+											where modified_by='%s'"""%user,as_dict=1)
 		
 	if doc_name:
 		file_data_details=frappe.db.sql("""select file_name,file_url,attached_to_doctype,attached_to_name from `tabFile Data` 
-						where attached_to_doctype='%s'"""%doc_name,as_dict=1)
+						where attached_to_doctype='%s' and modified_by='%s'"""%(doc_name,user),as_dict=1)
 
 		msg="There is no any file is attached to the Doctype='"+doc_name+"'"
 		
 	elif file_name:
 		file_data_details=frappe.db.sql("""select file_name,file_url,attached_to_doctype,attached_to_name from `tabFile Data` 
-						where file_name like '%%%s%%' """%file_name,as_dict=1)
+						where file_name like '%%%s%%' and modified_by='%s'"""%(file_name,user),as_dict=1)
 		msg= "There is no any file whose name contains like '"+file_name+"' is attched to any doctype."
 
 	if file_data_details:
@@ -119,5 +120,5 @@ def get_attached_document_data(doc_name=None,file_name=None):
 		return file_data_details
 
 	else:
-		# frappe.throw(msg)
+		frappe.msgprint(msg)
 		return None
